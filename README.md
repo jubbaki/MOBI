@@ -1,24 +1,25 @@
 # MOBI Raspberry Pi MVP
 
-서보 1개로 머리를 좌우로 돌리고, 5인치 HDMI LCD에 표정을 띄우는 탁상형 반려로봇 MVP입니다.
+라즈베리파이에서 실행하는 탁상형 AI 반려로봇 MVP입니다. 현재 하드웨어 범위는 카메라, MPU6050, 마이크, 스피커, TTP224 터치 센서, 5인치 HDMI LCD입니다.
 
-## 목표 기능
+## 현재 목표 기능
 
-- RGB 카메라로 얼굴의 좌우 위치를 감지합니다.
-- SG-90 서보 1개로 머리를 좌우로 회전합니다.
-- 5인치 HDMI LCD에 눈 표정과 상태를 표시합니다.
+- RGB 카메라로 얼굴 또는 사람 위치를 감지합니다.
+- 5인치 HDMI LCD에 로봇 표정을 표시합니다.
+- 감지된 사람 위치에 따라 화면 속 눈동자가 좌우로 움직입니다.
 - TTP224 터치 센서 입력에 반응합니다.
 - MPU6050 흔들림 입력에 반응합니다.
-- 마이크/스피커 기능은 확장 지점으로 분리해 두었습니다.
+- 마이크로 음성을 인식하고 LLM 답변을 생성합니다.
+- 스피커로 로봇의 답변을 출력합니다.
 
 ## 파일 구성
 
 ```text
 MOBI/
   README.md
-  requirements-llm.txt
   requirements.txt
   requirements-yolo.txt
+  requirements-llm.txt
   run_mobi.py
   mobi/
     __init__.py
@@ -28,7 +29,6 @@ MOBI/
     imu.py
     llm.py
     main.py
-    motion.py
     touch.py
     vision.py
 ```
@@ -41,29 +41,33 @@ run_mobi.py
 
 mobi/main.py
 - 전체 실행 루프
-- 카메라, 서보, 화면, 터치, IMU, 오디오, LLM 연결
+- 카메라, 화면, 터치, IMU, 오디오, LLM 연결
+- 키보드 테스트 입력 처리
 
 mobi/config.py
-- 카메라 해상도, 서보 각도, GPIO 핀, 음성/LLM 설정값
+- 카메라 해상도
+- GPIO 핀 번호
+- 흔들림 기준값
+- 음성 인식/LLM 설정값
 
 mobi/vision.py
-- RGB Camera
-- Haar Cascade 얼굴 인식
+- RGB Camera 담당
+- 기본 Haar Cascade 얼굴 인식
 - 선택적으로 YOLO 사람/얼굴 인식
-
-mobi/motion.py
-- PCA9685
-- SG-90 서보 좌우 회전
+- 감지 대상의 중심 x/y 좌표 계산
 
 mobi/face_ui.py
-- 5인치 HDMI LCD 표정 UI
-- idle, happy, dizzy, listen, speak, sleep 표정
+- 5인치 HDMI LCD 표정 UI 담당
+- idle, happy, dizzy, listen, speak, sleep 표정 출력
+- 카메라 감지 방향에 따라 눈동자 좌우 이동
 
 mobi/touch.py
-- TTP224 정전식 터치 센서
+- TTP224 정전식 터치 센서 담당
+- 터치 입력을 GPIO로 읽음
 
 mobi/imu.py
-- MPU6050 흔들림 감지
+- MPU6050 담당
+- x/y/z 가속도로 흔들림 감지
 
 mobi/audio.py
 - Microphone 음성 인식(STT)
@@ -76,19 +80,6 @@ mobi/llm.py
 ```
 
 ## 배선 요약
-
-### PCA9685 + SG-90
-
-```text
-PCA9685 VCC -> Raspberry Pi 3.3V
-PCA9685 GND -> Raspberry Pi GND
-PCA9685 SDA -> Raspberry Pi GPIO2 / SDA
-PCA9685 SCL -> Raspberry Pi GPIO3 / SCL
-PCA9685 V+  -> 외부 5V 서보 전원
-SG-90       -> PCA9685 channel 0
-
-외부 5V GND와 Raspberry Pi GND는 반드시 공통 접지
-```
 
 ### MPU6050
 
@@ -110,11 +101,21 @@ OUT3 -> GPIO22
 OUT4 -> GPIO23
 ```
 
+### RGB Camera
+
+USB 카메라라면 USB 포트에 연결합니다. Pi Camera Module이라면 카메라 포트에 연결하고 라즈베리파이 설정에서 카메라가 활성화되어 있는지 확인합니다.
+
+### Microphone / Speaker
+
+USB 마이크와 USB 스피커를 쓰는 구성이 가장 단순합니다. HDMI LCD 스피커를 쓰는 경우 라즈베리파이의 오디오 출력 장치를 HDMI로 설정해야 할 수 있습니다.
+
 ## 설치
 
 라즈베리파이 OS에서:
 
 ```bash
+git clone https://github.com/lijeongwu/IoTSystem_MOBI.git
+cd IoTSystem_MOBI
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -149,7 +150,7 @@ sudo raspi-config
 
 ## 실행
 
-하드웨어 없이 PC에서 화면/로직만 확인:
+하드웨어 없이 화면/로직만 확인:
 
 ```bash
 python run_mobi.py --mock
@@ -180,8 +181,7 @@ export OPENAI_API_KEY="YOUR_API_KEY"
 python run_mobi.py --audio --conversation
 ```
 
-실행 중 `V` 키를 누르면 한 번 듣고, 답변을 생성한 뒤 스피커로 말합니다.
-현재 STT는 `SpeechRecognition`의 Google 음성 인식을 사용하므로 인터넷 연결이 필요합니다.
+실행 중 `V` 키를 누르면 한 번 듣고, 답변을 생성한 뒤 스피커로 말합니다. 현재 STT는 `SpeechRecognition`의 Google 음성 인식을 사용하므로 인터넷 연결이 필요합니다.
 
 카메라 번호가 다르면:
 
@@ -189,11 +189,13 @@ python run_mobi.py --audio --conversation
 python run_mobi.py --camera-index 1
 ```
 
+## 얼굴 인식 로그
+
 얼굴 인식 여부는 콘솔 로그로 확인할 수 있습니다.
 
 ```text
 face detected: 얼굴을 처음 찾음
-face tracking: 얼굴 위치와 서보 각도 추적 중
+face tracking: 얼굴 위치 추적 중
 face lost: 얼굴을 놓침
 ```
 
@@ -214,17 +216,18 @@ python run_mobi.py --log-level DEBUG
 4: listen
 5: speak
 V: 마이크로 한 번 듣고 LLM 답변 말하기
-Space: 정면으로 서보 복귀
 Esc / Q: 종료
 ```
 
-## 개발 순서 추천
+## 센서 연결 테스트 추천 순서
 
-1. `python run_mobi.py --mock`으로 표정 화면 확인
-2. 라즈베리파이에서 LCD 출력 확인
-3. PCA9685와 SG-90만 연결해서 서보 동작 확인
-4. 카메라 연결 후 얼굴 추적 확인
-5. TTP224 터치 반응 연결
-6. MPU6050 흔들림 반응 연결
-7. 음성 입출력 연결
+```text
+1. python run_mobi.py --mock 으로 표정 화면 확인
+2. 5인치 HDMI LCD 출력 확인
+3. 카메라 연결 후 얼굴/사람 인식 확인
+4. TTP224 터치 반응 연결
+5. MPU6050 흔들림 반응 연결
+6. 스피커 출력 확인
+7. 마이크 입력 확인
 8. LLM 대화 기능 연결
+```

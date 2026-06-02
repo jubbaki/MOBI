@@ -4,17 +4,6 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
-class ServoConfig:
-    channel: int = 0
-    min_angle: int = 35
-    center_angle: int = 90
-    max_angle: int = 145
-    step_degrees: float = 1.8
-    deadzone_px: int = 55
-    update_interval_s: float = 0.035
-
-
-@dataclass(frozen=True)
 class VisionConfig:
     camera_index: int = 0
     width: int = 320
@@ -72,7 +61,6 @@ class LlmConfig:
 @dataclass(frozen=True)
 class RobotConfig:
     mock: bool = False
-    servo: ServoConfig = field(default_factory=ServoConfig)
     vision: VisionConfig = field(default_factory=VisionConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     touch: TouchConfig = field(default_factory=TouchConfig)

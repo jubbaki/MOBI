@@ -11,7 +11,6 @@ from .config import AudioConfig, LlmConfig, RobotConfig, VisionConfig
 from .face_ui import FaceState, FaceUI
 from .imu import ImuSensor
 from .llm import LlmClient
-from .motion import HeadServo
 from .touch import TouchSensor
 from .vision import Vision
 
@@ -41,7 +40,6 @@ class MobiApp:
         self.config = config
         self.ui = FaceUI(config.display)
         self.vision = Vision(config.vision, mock=config.mock)
-        self.servo = HeadServo(config.servo, mock=config.mock)
         self.touch = TouchSensor(config.touch, mock=config.mock)
         self.imu = ImuSensor(config.imu, mock=config.mock)
         self.audio = AudioIO(config.audio, mock=config.mock)
@@ -52,6 +50,7 @@ class MobiApp:
         self._mood_until = 0.0
         self._last_face_seen = False
         self._last_tracking_log_at = 0.0
+        self._looking_x = 0.0
 
     def run(self) -> None:
         try:
@@ -85,8 +84,6 @@ class MobiApp:
                 self._set_mood("speak", "speaking", duration=1.5)
             elif event.key == pygame.K_v:
                 self._run_conversation_turn()
-            elif event.key == pygame.K_SPACE:
-                self.servo.center()
 
     def _poll_sensors(self) -> None:
         if self.touch.touched():
@@ -99,11 +96,11 @@ class MobiApp:
 
     def _update_from_camera(self) -> None:
         detection = self.vision.read()
-        self.servo.track_face_x(detection.x, detection.frame_width)
 
         looking_x = 0.0
         if detection.x is not None:
             looking_x = (detection.x - detection.frame_width / 2) / (detection.frame_width / 2)
+        self._looking_x = looking_x
 
         if detection.seen and not self._last_face_seen:
             self._set_mood("happy", "face detected", duration=0.9)
@@ -119,7 +116,7 @@ class MobiApp:
 
         now = time.monotonic()
         if detection.seen and now - self._last_tracking_log_at > 1.0:
-            self.logger.info("face tracking: x=%s servo_angle=%.1f", detection.x, self.servo.angle)
+            self.logger.info("face tracking: x=%s y=%s", detection.x, detection.y)
             self._last_tracking_log_at = now
 
         self._last_face_seen = detection.seen
@@ -170,7 +167,7 @@ class MobiApp:
         self.ui.set_state(
             FaceState(
                 mood=self.mood,
-                looking_x=0.0,
+                looking_x=self._looking_x,
                 face_seen=self._last_face_seen,
                 message=self.message,
             )
