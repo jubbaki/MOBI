@@ -20,6 +20,7 @@ MOBI는 책상 위에 놓이는 AI 반려로봇 MVP입니다. 현재 단계는 *
 MOBI/
   README.md
   requirements.txt
+  requirements-camera.txt
   requirements-llm.txt
   run_mobi.py
   mobi/
@@ -156,6 +157,22 @@ source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
+
+MediaPipe 얼굴 추적을 사용할 경우:
+
+```bash
+pip install -r requirements-camera.txt
+```
+
+`mediapipe` 설치 후보를 찾지 못하면 Python 버전이나 OS 아키텍처가 맞지 않는 경우가 많습니다. 먼저 아래를 확인하세요.
+
+```bash
+python --version
+uname -m
+getconf LONG_BIT
+```
+
+라즈베리파이에서는 64-bit OS와 Python 3.11 조합이 가장 현실적입니다.
 
 I2C를 켭니다.
 
