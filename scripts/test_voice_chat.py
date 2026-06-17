@@ -54,8 +54,8 @@ def run_player(command: list[str]) -> bool:
         subprocess.run(
             command,
             check=True,
-            stdout=subprocess.DEVNULL if quiet else None,
-            stderr=subprocess.DEVNULL if quiet else None,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         return True
     except subprocess.CalledProcessError as exc:

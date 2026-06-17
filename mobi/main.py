@@ -244,6 +244,8 @@ class MobiApp:
                 self.logger.warning("Gemini Live error: %s", event.text)
             elif event.type == LiveEventType.STOPPED:
                 self.logger.info("Gemini Live stopped")
+                if not self._sleeping:
+                    self._go_to_sleep()
             elif event.type == LiveEventType.INPUT_TEXT:
                 text = event.text.replace(" ", "")
                 self.logger.info("Live input: %s", event.text)

@@ -222,7 +222,7 @@ class GeminiLiveController:
                     end_of_speech_sensitivity=types.EndSensitivity.END_SENSITIVITY_HIGH,
                     silence_duration_ms=self.config.silence_ms,
                 ),
-                activity_handling=types.ActivityHandling.START_OF_ACTIVITY_INTERRUPTS,
+                activity_handling=types.ActivityHandling.NO_INTERRUPTION,
                 turn_coverage=types.TurnCoverage.TURN_INCLUDES_ONLY_ACTIVITY,
             ),
         )
@@ -291,7 +291,11 @@ class GeminiLiveController:
                         if server_content and server_content.turn_complete:
                             if player and player.stdin:
                                 player.stdin.close()
-                                await player.wait()
+                                try:
+                                    await asyncio.wait_for(player.wait(), timeout=2.0)
+                                except asyncio.TimeoutError:
+                                    player.kill()
+                                    await player.wait()
                                 player = None
                             if self._speaking.is_set():
                                 self._speaking.clear()
